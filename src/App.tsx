@@ -51,33 +51,33 @@ export default function App() {
 
   // Current status logic
   const status = useMemo(() => {
-    const todayStr = now.toISOString().split('T')[0];
-    const todayIndex = RAMADAN_TIMETABLE.findIndex(d => d.date === todayStr);
-    
-    if (todayIndex === -1) {
-      const firstDay = new Date(RAMADAN_TIMETABLE[0].date);
-      if (now < firstDay) {
-        return { type: 'PRE_RAMADAN', target: firstDay, day: RAMADAN_TIMETABLE[0] };
+    // Find the next upcoming event by iterating through the timetable
+    for (let i = 0; i < RAMADAN_TIMETABLE.length; i++) {
+      const day = RAMADAN_TIMETABLE[i];
+      const sehriTime = new Date(`${day.date}T${day.sehri}:00`);
+      const iftarTime = new Date(`${day.date}T${day.iftar}:00`);
+
+      if (now < sehriTime) {
+        return { type: 'SEHRI', target: sehriTime, day };
       }
+      if (now < iftarTime) {
+        return { type: 'IFTAR', target: iftarTime, day };
+      }
+    }
+
+    // If we've passed all events in the timetable
+    const firstDay = new Date(`${RAMADAN_TIMETABLE[0].date}T${RAMADAN_TIMETABLE[0].sehri}:00`);
+    if (now < firstDay) {
+      return { type: 'PRE_RAMADAN', target: firstDay, day: RAMADAN_TIMETABLE[0] };
+    }
+
+    const lastDay = RAMADAN_TIMETABLE[RAMADAN_TIMETABLE.length - 1];
+    const lastIftar = new Date(`${lastDay.date}T${lastDay.iftar}:00`);
+    if (now > lastIftar) {
       return { type: 'POST_RAMADAN', target: null, day: null };
     }
 
-    const today = RAMADAN_TIMETABLE[todayIndex];
-    const sehriTime = new Date(`${today.date}T${today.sehri}:00`);
-    const iftarTime = new Date(`${today.date}T${today.iftar}:00`);
-
-    if (now < sehriTime) {
-      return { type: 'SEHRI', target: sehriTime, day: today };
-    } else if (now < iftarTime) {
-      return { type: 'IFTAR', target: iftarTime, day: today };
-    } else {
-      const nextDay = RAMADAN_TIMETABLE[todayIndex + 1];
-      if (nextDay) {
-        const nextSehri = new Date(`${nextDay.date}T${nextDay.sehri}:00`);
-        return { type: 'NEXT_SEHRI', target: nextSehri, day: today };
-      }
-      return { type: 'EID_SOON', target: null, day: today };
-    }
+    return { type: 'EID_SOON', target: null, day: RAMADAN_TIMETABLE[RAMADAN_TIMETABLE.length - 1] };
   }, [now]);
 
   const timeRemaining = status.target ? status.target.getTime() - now.getTime() : 0;
