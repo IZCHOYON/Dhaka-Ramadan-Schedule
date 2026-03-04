@@ -25,6 +25,14 @@ const to12Hour = (time24: string) => {
   return `${h12}:${minutes} ${ampm}`;
 };
 
+// Helper to get YYYY-MM-DD in local time
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 type View = 'home' | 'timetable' | 'namaz' | 'info';
 
 export default function App() {
@@ -38,6 +46,11 @@ export default function App() {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Shifted date object that "thinks" it's in Dhaka for wall-clock comparisons
+  const dhakaTime = useMemo(() => {
+    return new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }));
+  }, [now]);
 
   // Auto-scroll to today when view changes
   useEffect(() => {
@@ -57,30 +70,30 @@ export default function App() {
       const sehriTime = new Date(`${day.date}T${day.sehri}:00`);
       const iftarTime = new Date(`${day.date}T${day.iftar}:00`);
 
-      if (now < sehriTime) {
+      if (dhakaTime < sehriTime) {
         return { type: 'SEHRI', target: sehriTime, day };
       }
-      if (now < iftarTime) {
+      if (dhakaTime < iftarTime) {
         return { type: 'IFTAR', target: iftarTime, day };
       }
     }
 
     // If we've passed all events in the timetable
     const firstDay = new Date(`${RAMADAN_TIMETABLE[0].date}T${RAMADAN_TIMETABLE[0].sehri}:00`);
-    if (now < firstDay) {
+    if (dhakaTime < firstDay) {
       return { type: 'PRE_RAMADAN', target: firstDay, day: RAMADAN_TIMETABLE[0] };
     }
 
     const lastDay = RAMADAN_TIMETABLE[RAMADAN_TIMETABLE.length - 1];
     const lastIftar = new Date(`${lastDay.date}T${lastDay.iftar}:00`);
-    if (now > lastIftar) {
+    if (dhakaTime > lastIftar) {
       return { type: 'POST_RAMADAN', target: null, day: null };
     }
 
     return { type: 'EID_SOON', target: null, day: RAMADAN_TIMETABLE[RAMADAN_TIMETABLE.length - 1] };
-  }, [now]);
+  }, [dhakaTime]);
 
-  const timeRemaining = status.target ? status.target.getTime() - now.getTime() : 0;
+  const timeRemaining = status.target ? status.target.getTime() - dhakaTime.getTime() : 0;
   const { hours, minutes, seconds } = formatTime(timeRemaining);
 
   const getStatusLabel = () => {
@@ -125,10 +138,10 @@ export default function App() {
               <h1 className={`text-3xl font-black tracking-tighter uppercase ${accentColor}`}>Ramadan 2026</h1>
               <div className={`hidden md:flex flex-col border-l-2 border-zinc-800 pl-3 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
                 <span className="text-xs font-black uppercase tracking-widest leading-none mb-1">
-                  {now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {dhakaTime.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </span>
                 <span className="text-lg font-black tabular-nums leading-none">
-                  {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                  {dhakaTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                 </span>
               </div>
             </div>
@@ -138,7 +151,7 @@ export default function App() {
             </div>
             {/* Mobile Clock */}
             <div className="md:hidden mt-2 text-zinc-400 font-black text-[10px] uppercase tracking-widest">
-              {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} • {now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {dhakaTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} • {dhakaTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -170,9 +183,14 @@ export default function App() {
                 </div>
 
                 <div className="relative z-10">
-                  <p className="text-zinc-500 text-xs font-black uppercase tracking-[0.2em] mb-6">
-                    {getStatusLabel()}
-                  </p>
+                  <div className="flex justify-between items-start mb-6">
+                    <p className="text-zinc-500 text-xs font-black uppercase tracking-[0.2em]">
+                      {getStatusLabel()}
+                    </p>
+                    <p className={`text-xs font-black uppercase tracking-[0.2em] ${accentColor}`}>
+                      {dhakaTime.toLocaleDateString('en-US', { weekday: 'long' })}
+                    </p>
+                  </div>
 
                   <div className="flex items-baseline justify-center md:justify-start gap-3 mb-12">
                     <div className="flex flex-col items-center">
@@ -258,7 +276,7 @@ export default function App() {
                   <table className="w-full text-left">
                     <thead className={`sticky top-0 z-10 text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-zinc-900 text-zinc-500' : 'bg-zinc-50 text-zinc-400'}`}>
                       <tr>
-                        <th className="px-6 py-4">Day</th>
+                        <th className="px-6 py-4">Day (Weekday)</th>
                         <th className="px-6 py-4">Date</th>
                         <th className="px-6 py-4">Sehri</th>
                         <th className="px-6 py-4">Iftar</th>
@@ -266,14 +284,16 @@ export default function App() {
                     </thead>
                     <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800' : 'divide-zinc-100'}`}>
                       {RAMADAN_TIMETABLE.map((day) => {
-                        const isToday = day.date === now.toISOString().split('T')[0];
+                        const isToday = day.date === getLocalDateString(dhakaTime);
                         return (
                           <tr 
                             key={day.ramadan} 
                             ref={isToday ? todayRowRef : null}
                             className={`transition-colors ${isToday ? 'bg-red-500/10' : ''}`}
                           >
-                            <td className={`px-6 py-4 font-black ${isToday ? 'text-red-500' : ''}`}>{day.ramadan}</td>
+                            <td className={`px-6 py-4 font-black ${isToday ? 'text-red-500' : ''}`}>
+                              {day.ramadan} <span className="text-[10px] opacity-50 font-medium ml-1">({day.day})</span>
+                            </td>
                             <td className={`px-6 py-4 font-medium ${isToday ? 'text-red-500' : 'text-zinc-500'}`}>
                               {new Date(day.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
                             </td>
@@ -318,7 +338,7 @@ export default function App() {
                     </thead>
                     <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800' : 'divide-zinc-100'}`}>
                       {PRAYER_TIMES.map((day) => {
-                        const isToday = day.date === now.toISOString().split('T')[0];
+                        const isToday = day.date === getLocalDateString(dhakaTime);
                         return (
                           <tr 
                             key={day.date} 
@@ -326,7 +346,12 @@ export default function App() {
                             className={`transition-colors ${isToday ? 'bg-red-500/10' : ''}`}
                           >
                             <td className={`px-4 py-4 font-medium whitespace-nowrap ${isToday ? 'text-red-500' : 'text-zinc-500'}`}>
-                              {new Date(day.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                              <div className="flex flex-col">
+                                <span>{new Date(day.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
+                                <span className="text-[10px] opacity-50 font-medium uppercase tracking-widest">
+                                  {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                                </span>
+                              </div>
                             </td>
                             <td className={`px-4 py-4 tabular-nums font-bold ${isToday ? 'text-red-500' : ''}`}>{to12Hour(day.fajr)}</td>
                             <td className={`px-4 py-4 tabular-nums font-bold ${isToday ? 'text-red-500' : ''}`}>{to12Hour(day.dhuhr)}</td>
