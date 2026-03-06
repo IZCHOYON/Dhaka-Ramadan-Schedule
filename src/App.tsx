@@ -136,8 +136,8 @@ export default function App() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className={`text-3xl font-black tracking-tighter uppercase ${accentColor}`}>Ramadan 2026</h1>
-              <div className={`hidden md:flex flex-col border-l-2 border-zinc-800 pl-3 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                <span className="text-xs font-black uppercase tracking-widest leading-none mb-1">
+              <div className={`hidden md:flex flex-col border-l-2 border-zinc-800 pl-3 ${accentColor}`}>
+                <span className="text-xs font-black uppercase tracking-widest leading-none mb-1 opacity-80">
                   {dhakaTime.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </span>
                 <span className="text-lg font-black tabular-nums leading-none">
@@ -150,7 +150,7 @@ export default function App() {
               <span>Dhaka, Bangladesh</span>
             </div>
             {/* Mobile Clock */}
-            <div className="md:hidden mt-2 text-zinc-400 font-black text-[10px] uppercase tracking-widest">
+            <div className={`md:hidden mt-2 font-black text-[10px] uppercase tracking-widest ${accentColor}`}>
               {dhakaTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} • {dhakaTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </div>
           </div>
@@ -183,14 +183,9 @@ export default function App() {
                 </div>
 
                 <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-6">
-                    <p className="text-zinc-500 text-xs font-black uppercase tracking-[0.2em]">
-                      {getStatusLabel()}
-                    </p>
-                    <p className={`text-xs font-black uppercase tracking-[0.2em] ${accentColor}`}>
-                      {dhakaTime.toLocaleDateString('en-US', { weekday: 'long' })}
-                    </p>
-                  </div>
+                  <p className="text-zinc-500 text-xs font-black uppercase tracking-[0.2em] mb-6">
+                    {getStatusLabel()}
+                  </p>
 
                   <div className="flex items-baseline justify-center md:justify-start gap-3 mb-12">
                     <div className="flex flex-col items-center">
